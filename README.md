@@ -32,15 +32,143 @@ This projects provides a small [HCL]-based [DSL]. The syntax is designed to be s
 
 It has a few basic components:
 
-* `uri` - a unique identifier declared at the top of the HCL file(s) for the model. Other data is 
+* [`uri`](./proto/layup/v1/layup.proto#L24) - a unique identifier declared at the top of the HCL file(s) for the model. Other data is 
           added in layers.
-* `layer` - a collection of `node`s and `link`s that represent some data found in a model's graph.
-    * `node` - a single node within a layer.
-    * `link` - a single link between two nodes, in the same or different layers.
+* [`layer`](./proto/layup/v1/layup.proto#L42) - a collection of nodes and links.
+    * [`node`](./proto/layup/v1/layup.proto#L86) - a single entity within a layer.
+    * [`link`](./proto/layup/v1/layup.proto#L98) - a directed relationship ("edge") between two nodes, possibly within the same layer or across layers.
+        * [`from`](./proto/layup/v1/layup.proto#L107) - the node the link is coming from (the source).
+        * [`to`](./proto/layup/v1/layup.proto#L108) - the node the link is going to (the destination).
 
-### Example
+Layers, nodes, and links can all have attributes. Attributes are non-reserved keys that can be used to add additional information to the layer, node, or link. For example, a node 
+representing a person might have attributes like `name`, `age`, `email`, etc. Or a link representing a relationship between two people might have attributes like `since`, `type`, etc.
 
-Lets model a small subset of dependencies of this project in HCL using Layup itself,
+### Example 1
+
+Lets model a very simple cake recipe using Layup:
+
+```
+uri = "layup://cake/very_simple"
+
+layer "ingredients" {
+    node "flour" {
+        type = "dry"
+        brand = "King Arthur"
+        ammount = "2 cups"
+    }
+
+    node "sugar" {
+        type = "dry"
+        brand = "Domino"
+        ammount = "1 cup"
+    }
+
+    node "eggs" {
+        type = "wet"
+        brand = "Eggland's Best"
+        count = 2
+    }
+
+    node "milk" {
+        type = "wet"
+        brand = "Organic Valley"
+        ammount = "1 cup"
+    }
+
+    node "butter" {
+        type = "wet"
+        brand = "Kerrygold"
+        ammount = "1/4 cup"
+    }
+}
+
+layer "tools" {
+    node "bowl" {
+        type = "container"
+        age = "old"
+        material = "glass"
+        brand = "Pyrex"
+    }
+
+    node "spoon" {
+        type = "utensil"
+        material = "wood"
+    }
+
+    node "pan" {
+        type = "container"
+        material = "metal"
+        brand = "Calphalon"
+    }
+
+    node "oven" {
+        type = "appliance"
+        brand = "GE"
+    }
+}
+
+layer "mix" {
+    link "add_flour" {
+        from = layer.ingredients.node.flour
+        to = layer.tools.node.bowl
+    }
+
+    link "add_sugar" {
+        from = layer.ingredients.node.sugar
+        to = layer.tools.node.bowl
+    }
+
+    link "add_eggs" {
+        from = layer.ingredients.node.eggs
+        to = layer.tools.node.bowl
+    }
+
+    link "add_milk" {
+        from = layer.ingredients.node.milk
+        to = layer.tools.node.bowl
+    }
+
+    link "mixup" {
+        from = layer.tools.node.spoon
+        to = layer.tools.node.bowl
+
+        until = "smooth"
+    }
+}
+
+layer "transfer" {
+    link "grease" {
+        from = layer.ingredients.node.butter
+        to = layer.tools.node.pan
+    }
+
+    link "pour" {
+        from = layer.tools.node.bowl
+        to = layer.tools.node.pan
+    }
+}
+
+layer "bake" {
+    link "put_in_oven" {
+        from = layer.tools.node.pan
+        to = layer.tools.node.oven
+
+        duration = "30 minutes"
+        temperature = "350 degrees"
+    }
+}
+```
+
+While this example is very simple, it demonstrates the basic syntax and structure of a Layup model. It also shows how layers can be used to logically group nodes and links. Even if Layup isn't the best tool for modeling recipes
+you'll use in the kitchen, it can be used to model anything else you can think of!
+
+Layers provide a way to logically group nodes and links. This can be useful for modeling different aspects of a system, or for modeling different systems. For example, you might have a layer for "networking" and another for "storage" in a system. Or you might have a layer for "production" and another for "staging" in a system. Or you might have a layer for "this system" and another for "that system" in a system. 
+
+The possibilities are endless with the basic building blocks of layers, nodes, and links that Layup provides.
+
+### Example 2
+
+Lets model a small subset of dependencies of this project using Layup itself,
 and then look at the JSON and Mermaid equivalents:
 
 ```hcl
