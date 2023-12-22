@@ -7,13 +7,16 @@
 >
 > It is primarily a personal research project to explore the idea of modeling graph data.
 
-**Layup** enables anyone to model relationships between data in a [graph] using "layers" containing
-"nodes" and "links" to represent relationships. It is designed to be a simple, flexible, and
-extensible way to model anything. Because everything is a graph.
+**Layup** models data as a [graph] using "layers" containing "nodes" and "links" to represent 
+relationships. It is designed to be a simple, flexible, and extensible way to model anything. 
+Because everything is a graph.
 
-The name is based on the "[lay-up] process" for composite materials, in which a final product is obtained by overlapping a specific number of different layers. This is a common process in the aerospace industry[^1], enabling complex shapes with mechanical properties or characteristics that are difficult to obtain with other manufacturing processes.
-
-Similarly, with Layup, you can model any system to understand its characteristics.
+The name draws inspiration from various sources. It relates to the act of "laying up" 
+bricks in a specific order, and the [lay-up] manufacturing process for composite materials, 
+such as in aerospace[^1], where a final product is achieved by overlapping distinct layers. 
+This technique allows for the creation of complex shapes with unique mechanical properties. 
+Lastly, it playfully references the basketball "layup", a simple yet effective shot. Combining 
+these concepts, the name aims to be memorable, easy to type, and applicable to graph data modeling.
 
 <!--
 ## Installation
@@ -32,7 +35,10 @@ $ layup --help
 
 ## HCL Syntax
 
-This projects provides a small [HCL]-based [DSL]. The syntax is designed to be simple and easy for operators to understand and use, especially if they are already familiar with HCL.
+This projects provides a small [HCL]-based [DSL]. The syntax is designed to be simple and easy for operators 
+to read and write, especially if they are already familiar with HCL. This syntax is then converted into a
+protocol buffer defined representation of the graph data, which enables it be easily consumed by other tools in a
+variety of formats, including JSON.
 
 It has a few basic components:
 
