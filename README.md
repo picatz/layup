@@ -47,7 +47,7 @@ representing a person might have attributes like `name`, `age`, `email`, etc. Or
 
 Lets model a very simple cake recipe using Layup:
 
-```
+```hcl
 uri = "layup://cake/very_simple"
 
 layer "ingredients" {
