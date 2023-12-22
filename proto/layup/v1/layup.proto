@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+// Layup enables anyone to model relationships between data
+// in a graph using "layers" to represent different views
+// of the data, and "links" to represent relationships
+// between the data.
+//
+// It is designed to be simple to use, and easy to
+// integrate with existing systems.
+//
+// Some elements may contain a URI which can be used to
+// uniquely identify them following the rules of RFC 3986.
+// https://datatracker.ietf.org/doc/html/rfc3986#section-3
+package layup.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "layupv1";
+
+// A model is a collection of layers which contain
+// nodes and links representing the data in the graph.
+message Model {
+  string uri = 1 [(buf.validate.field).string.uri = true];
+  map<string, google.protobuf.Value> attributes = 2 [(buf.validate.field).map = {
+    keys: {required: true},
+    values: {required: true},
+  }];
+  repeated Layer layers = 3;
+
+  // All layers must have unique IDs, to ensure that they
+  // can be referenced unambiguously in a URI, rooted at
+  // the model URI.
+  option (buf.validate.message).cel = {
+    id: "uniq_layer_ids",
+    message: "layers must have unique IDs",
+    expression: "this.layers.all(layer, this.layers.exists_one(other, layer.id == other.id))",
+  };
+}
+
+// A layer is a collection of nodes and links.
+message Layer {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^[a-zA-Z0-9-_]*$"}
+  ];
+  map<string, google.protobuf.Value> attributes = 2 [(buf.validate.field).map = {
+    keys: {required: true},
+    values: {required: true},
+  }];
+  repeated Node nodes = 3;
+  repeated Link links = 4;
+  optional bool dynamic = 5;
+
+  // All nodes within a layer must have unique IDs.
+  option (buf.validate.message).cel = {
+    id: "uniq_node_ids",
+    message: "nodes within a layer must have unique IDs",
+    expression: "this.nodes.all(node, this.nodes.exists_one(other, node.id == other.id))",
+  };
+
+  // All links within a layer must have unique IDs.
+  option (buf.validate.message).cel = {
+    id: "uniq_link_ids",
+    message: "links within a layer must have unique IDs",
+    expression: "this.links.all(link, this.links.exists_one(other, link.id == other.id))",
+  };
+
+  // All "from" links must reference a node within the layer.
+  option (buf.validate.message).cel = {
+    id: "valid_link_from",
+    message: "links must have a valid 'from' node reference",
+    expression: "this.links.all(link, this.nodes.exists_one(node, link.from == node.id))",
+  };
+
+  // All "to" links must reference a node within the layer,
+  // or be a URI.
+  option (buf.validate.message).cel = {
+    id: "valid_link_to",
+    message: "links must have a valid 'to' node reference",
+    expression: "this.links.all(link, this.nodes.exists_one(node, link.to == node.id) || link.to.isUri())",
+  };
+}
+
+// A node is a single piece of data in the graph.
+message Node {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^[a-zA-Z0-9-_]*$"}
+  ];
+  map<string, google.protobuf.Value> attributes = 2 [(buf.validate.field).map = {
+    keys: {required: true},
+    values: {required: true},
+  }];
+}
+
+// A link is a relationship between two nodes.
+message Link {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^[a-zA-Z0-9-_]*$"}
+  ];
+  map<string, google.protobuf.Value> attributes = 2 [(buf.validate.field).map = {
+    keys: {required: true},
+    values: {required: true},
+  }];
+  string from = 3 [(buf.validate.field).required = true];
+  string to = 4 [(buf.validate.field).required = true];
+
+  // A link must have a "from" and "to", where from is a local
+  // node ID, and to is either a local node ID or a URI.
+  option (buf.validate.message).cel = {
+    id: "valid_link",
+    message: "links must have a valid 'from' and 'to' node reference in the correct format",
+    expression: "this.from.matches('^[a-zA-Z0-9-_]*$') && this.to.matches('^[a-zA-Z0-9-_]*$') || this.to.isUri()",
+  };
+}
