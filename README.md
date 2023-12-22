@@ -11,7 +11,7 @@
 "nodes" and "links" to represent relationships. It is designed to be a simple, flexible, and
 extensible way to model anything. Because everything is a graph.
 
-The name is based on the "[lay-up] process" for composite materials, in which a final product is obtained by overlapping a specific number of different layers. This is a common process in the aerospace industry[^1], enabling complex shapes with good mechanical properties or characteristics that are difficult to obtain with other manufacturing processes.
+The name is based on the "[lay-up] process" for composite materials, in which a final product is obtained by overlapping a specific number of different layers. This is a common process in the aerospace industry[^1], enabling complex shapes with mechanical properties or characteristics that are difficult to obtain with other manufacturing processes.
 
 Similarly, with Layup, you can model any system(s) to understand its characteristics.
 
