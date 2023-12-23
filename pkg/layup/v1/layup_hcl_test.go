@@ -9,6 +9,75 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+var stepFuncTest = `uri = "layup://eat"
+
+layer "ramen" {
+	buy = node({
+		count = 1
+		brand = "nissin"
+		flavor = "chicken"
+	})
+
+	cook = node({
+		duration = "3 minutes"
+	})
+
+	wait = node({
+		duration = node.cook.duration
+	})
+
+	eat = node({
+		count = node.buy.count
+	})
+}`
+
+func TestParseHCL_step_functions(t *testing.T) {
+	m, err := layupv1.ParseHCL(strings.NewReader(stepFuncTest))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := protojson.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(string(b))
+}
+
+var funcTest = `uri = "layup://example"
+
+layer "standalone" {
+	a = node({
+		count = 2
+	})
+	
+	b = node({
+		label = "${node.a.count}_abcd"
+		count = node.a.count
+	})
+	
+	from_a_to_b = link("a", "b", {
+		example = "ok"
+	})
+	
+	loop = link("a", "a")
+}`
+
+func TestParseHCL_functions(t *testing.T) {
+	m, err := layupv1.ParseHCL(strings.NewReader(funcTest))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := protojson.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(string(b))
+}
+
 var thisProject = `uri = "layup://example"
 
 layer "github" {
@@ -17,7 +86,7 @@ layer "github" {
     }
 
     node "this_repository" {
-        url = "httpd://github.com/picatz/layup"
+        url = "${node.my_account.url}/layup"
     }
 
     node "buf_organization" {
@@ -40,7 +109,7 @@ layer "go" {
     }
 
     node "runtime" {
-        url = "https://golang.org/pkg/runtime"
+        url = "${node.language.url}/pkg/runtime"
     }
 
     link "stewardship" {

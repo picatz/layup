@@ -3,6 +3,7 @@ package layupv1
 import (
 	"fmt"
 	"io"
+	"reflect"
 
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/hashicorp/hcl/v2"
@@ -13,11 +14,110 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// schema is a struct that represents the top-level HCL schema for Layup.
+var (
+	ctyLinkType = cty.Capsule("link", reflect.TypeOf(Link{}))
+	ctyNodeType = cty.Capsule("node", reflect.TypeOf(Node{}))
+)
+
+// layerFunctions is a map of functions that are available to use in the HCL
+// file inside of a layer block.
+var layerFunctions = map[string]function.Function{
+	"node": function.New(&function.Spec{
+		Description: "node is a function that creates a node",
+		Params:      []function.Parameter{},
+		VarParam: &function.Parameter{
+			Name:        "attributes",
+			Type:        cty.DynamicPseudoType,
+			Description: "attributes is a map of attributes to set on the node",
+			AllowNull:   true,
+		},
+		Type: func(args []cty.Value) (cty.Type, error) {
+			return ctyNodeType, nil
+		},
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			node := &Node{
+				// Id is set by the caller, because it knows the attribute name
+				// which is used as the node's id.
+				Attributes: map[string]*structpb.Value{},
+			}
+
+			for _, arg := range args {
+				for k, v := range arg.AsValueMap() {
+					switch v.Type() {
+					case cty.String:
+						node.Attributes[k] = structpb.NewStringValue(v.AsString())
+					case cty.Number:
+						f, _ := v.AsBigFloat().Float64()
+						node.Attributes[k] = structpb.NewNumberValue(f)
+					case cty.Bool:
+						node.Attributes[k] = structpb.NewBoolValue(v.True())
+					default:
+						return cty.NilVal, fmt.Errorf("unknown attribute type: %s", v.Type().FriendlyName())
+					}
+				}
+			}
+
+			return cty.CapsuleVal(retType, node), nil
+		},
+	}),
+	"link": function.New(&function.Spec{
+		Description: "link is a function that creates a link between two nodes",
+		Params: []function.Parameter{
+			{
+				Name:        "from",
+				Type:        cty.String,
+				Description: "from is the name of the node to link from",
+			},
+			{
+				Name:        "to",
+				Type:        cty.String,
+				Description: "to is the name of the node to link to",
+			},
+		},
+		VarParam: &function.Parameter{
+			Name:        "attributes",
+			Type:        cty.DynamicPseudoType,
+			Description: "attributes is a map of attributes to set on the link",
+			AllowNull:   true,
+		},
+		Type: func(args []cty.Value) (cty.Type, error) {
+			return ctyLinkType, nil
+		},
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			link := &Link{
+				// Id is set by the caller, because it knows the attribute name
+				// which is used as the link's id.
+				From:       args[0].AsString(),
+				To:         args[1].AsString(),
+				Attributes: map[string]*structpb.Value{},
+			}
+
+			for _, arg := range args[2:] {
+				for k, v := range arg.AsValueMap() {
+					switch v.Type() {
+					case cty.String:
+						link.Attributes[k] = structpb.NewStringValue(v.AsString())
+					case cty.Number:
+						f, _ := v.AsBigFloat().Float64()
+						link.Attributes[k] = structpb.NewNumberValue(f)
+					case cty.Bool:
+						link.Attributes[k] = structpb.NewBoolValue(v.True())
+					default:
+						return cty.NilVal, fmt.Errorf("unknown attribute type: %s", v.Type().FriendlyName())
+					}
+				}
+			}
+
+			return cty.CapsuleVal(retType, link), nil
+		},
+	}),
+}
+
+// topLevelHCLSchema is a struct that represents the top-level HCL schema for Layup.
 //
 // The rest of the HCL body content is processed manually to allow for natural
 // grouping and referencing of nodes and links in the HCL file.
-type schema struct {
+type topLevelHCLSchema struct {
 	URI string `hcl:"uri,attr"`
 	// Rest of the HCL body content
 	Rest hcl.Body `hcl:",remain"`
@@ -32,7 +132,7 @@ func ParseHCL(r io.Reader) (*Model, error) {
 		return nil, err
 	}
 
-	var topLevel schema
+	var topLevel topLevelHCLSchema
 
 	htx := &hcl.EvalContext{
 		Variables: map[string]cty.Value{
@@ -60,11 +160,11 @@ func ParseHCL(r io.Reader) (*Model, error) {
 
 	if body, ok := topLevel.Rest.(*hclsyntax.Body); ok {
 		// TODO: consider parsing all layers, then nodes, then links.
-		for _, block := range body.Blocks {
-			switch block.Type {
+		for _, topLevelBlock := range body.Blocks {
+			switch topLevelBlock.Type {
 			case "layer":
 				layer := &Layer{
-					Id: block.Labels[0],
+					Id: topLevelBlock.Labels[0],
 				}
 
 				// Create a new eval context for the layer, which is a copy
@@ -73,7 +173,7 @@ func ParseHCL(r io.Reader) (*Model, error) {
 				layerHtx := htx.NewChild()
 
 				layerHtx.Variables = map[string]cty.Value{}
-				layerHtx.Functions = map[string]function.Function{}
+				layerHtx.Functions = layerFunctions
 
 				// Add a "node" variable which will contain each node namespaced
 				// behind it (e.g. node.a, node.b, etc.)
@@ -86,19 +186,19 @@ func ParseHCL(r io.Reader) (*Model, error) {
 				// TODO: consider parsing all nodes, then links. This way we can
 				//       reference nodes by name in the link blocks that are 'out
 				//       of order' in the HCL file.
-				for _, node := range block.Body.Blocks {
-					switch node.Type {
+				for _, layerBlock := range topLevelBlock.Body.Blocks {
+					switch layerBlock.Type {
 					case "node":
 						pbNode := &Node{
-							Id:         node.Labels[0],
+							Id:         layerBlock.Labels[0],
 							Attributes: map[string]*structpb.Value{},
 						}
 
-						hclNode := cty.ObjectVal(map[string]cty.Value{
-							"id": cty.StringVal(node.Labels[0]),
-						})
+						hclNodeValMap := map[string]cty.Value{
+							"id": cty.StringVal(layerBlock.Labels[0]),
+						}
 
-						for _, attr := range node.Body.Attributes {
+						for _, attr := range layerBlock.Body.Attributes {
 							if attr.Name == "id" {
 								continue
 							}
@@ -108,7 +208,7 @@ func ParseHCL(r io.Reader) (*Model, error) {
 								return nil, fmt.Errorf("failed to parse attribute: %w", diags.Errs()[0])
 							}
 
-							hclNode.AsValueMap()[attr.Name] = val
+							hclNodeValMap[attr.Name] = val
 
 							switch val.Type() {
 							case cty.String:
@@ -136,20 +236,20 @@ func ParseHCL(r io.Reader) (*Model, error) {
 							vm = map[string]cty.Value{}
 						}
 
-						vm[node.Labels[0]] = hclNode
+						vm[layerBlock.Labels[0]] = cty.ObjectVal(hclNodeValMap)
 
 						layerHtx.Variables["node"] = cty.ObjectVal(vm)
 
 						layer.Nodes = append(layer.Nodes, pbNode)
 					case "link":
 						link := &Link{
-							Id: node.Labels[0],
+							Id: layerBlock.Labels[0],
 						}
 
-						for _, attr := range node.Body.Attributes {
-							switch attr.Name {
+						for _, linkLayerBlockAttr := range layerBlock.Body.Attributes {
+							switch linkLayerBlockAttr.Name {
 							case "from":
-								from, diags := attr.Expr.Value(layerHtx)
+								from, diags := linkLayerBlockAttr.Expr.Value(layerHtx)
 								if diags.HasErrors() {
 									return nil, fmt.Errorf("failed to parse 'from' attribute: %w", diags.Errs()[0])
 								}
@@ -163,7 +263,7 @@ func ParseHCL(r io.Reader) (*Model, error) {
 							case "to":
 								// To may be a string or a reference to a node in this layer, or a node in another layer.
 								// We can determine this by examining the type of the expression.
-								switch expr := attr.Expr.(type) {
+								switch expr := linkLayerBlockAttr.Expr.(type) {
 								case *hclsyntax.ScopeTraversalExpr:
 									switch expr.Traversal.RootName() {
 									case "layer":
@@ -245,13 +345,123 @@ func ParseHCL(r io.Reader) (*Model, error) {
 								default:
 									return nil, fmt.Errorf("unknown to type: %#+v", expr)
 								}
+							default:
+								val, diags := linkLayerBlockAttr.Expr.Value(layerHtx)
+								if diags.HasErrors() {
+									return nil, fmt.Errorf("failed to parse attribute: %w", diags.Errs()[0])
+								}
 
+								switch val.Type() {
+								case cty.String:
+									link.Attributes[linkLayerBlockAttr.Name] = structpb.NewStringValue(val.AsString())
+								case cty.Number:
+									f, _ := val.AsBigFloat().Float64()
+									link.Attributes[linkLayerBlockAttr.Name] = structpb.NewNumberValue(f)
+								case cty.Bool:
+									link.Attributes[linkLayerBlockAttr.Name] = structpb.NewBoolValue(val.True())
+								default:
+									return nil, fmt.Errorf("unknown attribute type: %s", val.Type().FriendlyName())
+								}
 							}
 						}
 
 						layer.Links = append(layer.Links, link)
 					default:
-						return nil, fmt.Errorf("unknown layer block type: %s", node.Type)
+						return nil, fmt.Errorf("unknown layer block type: %s", layerBlock.Type)
+					}
+				}
+
+				// Parse the layer's attributes, all the stuff that were not blocks.
+				for _, attr := range topLevelBlock.Body.Attributes {
+					if attr.Name == "id" {
+						continue
+					}
+
+					val, diags := attr.Expr.Value(layerHtx)
+					if diags.HasErrors() {
+						return nil, fmt.Errorf("failed to parse attribute: %w", diags.Errs()[0])
+					}
+
+					switch val.Type() {
+					case cty.String:
+						layer.Attributes[attr.Name] = structpb.NewStringValue(val.AsString())
+					case cty.Number:
+						f, _ := val.AsBigFloat().Float64()
+						layer.Attributes[attr.Name] = structpb.NewNumberValue(f)
+					case cty.Bool:
+						layer.Attributes[attr.Name] = structpb.NewBoolValue(val.True())
+					case ctyLinkType:
+						// Must be using the link function to create a link.
+						// Get the underlying link value from the capsule.
+						linkFnResult := val.EncapsulatedValue().(*Link)
+
+						linkFnResult.Id = attr.Name
+
+						// Add the link to the layer's eval context
+						vm := layerHtx.Variables["link"].AsValueMap()
+
+						if vm == nil {
+							vm = map[string]cty.Value{}
+						}
+
+						linkResultVM := map[string]cty.Value{
+							"id":   cty.StringVal(linkFnResult.Id),
+							"from": cty.StringVal(linkFnResult.Attributes["from"].GetStringValue()),
+							"to":   cty.StringVal(linkFnResult.Attributes["from"].GetStringValue()),
+						}
+
+						for k, v := range linkFnResult.Attributes {
+							switch v.Kind.(type) {
+							case *structpb.Value_StringValue:
+								linkResultVM[k] = cty.StringVal(v.GetStringValue())
+							case *structpb.Value_NumberValue:
+								linkResultVM[k] = cty.NumberFloatVal(v.GetNumberValue())
+							case *structpb.Value_BoolValue:
+								linkResultVM[k] = cty.BoolVal(v.GetBoolValue())
+							}
+						}
+
+						vm[linkFnResult.Id] = cty.ObjectVal(linkResultVM)
+
+						layerHtx.Variables["link"] = cty.ObjectVal(vm)
+
+						layer.Links = append(layer.Links, linkFnResult)
+					case ctyNodeType:
+						// Must be using the node function to create a node.
+						// Get the underlying node value from the capsule.
+						nodeFnResult := val.EncapsulatedValue().(*Node)
+
+						nodeFnResult.Id = attr.Name
+
+						// Add the node to the layer's eval context
+						vm := layerHtx.Variables["node"].AsValueMap()
+
+						if vm == nil {
+							vm = map[string]cty.Value{}
+						}
+
+						nodeResultVM := map[string]cty.Value{
+							"id": cty.StringVal(nodeFnResult.Id),
+						}
+
+						for k, v := range nodeFnResult.Attributes {
+							switch v.Kind.(type) {
+							case *structpb.Value_StringValue:
+								nodeResultVM[k] = cty.StringVal(v.GetStringValue())
+							case *structpb.Value_NumberValue:
+								nodeResultVM[k] = cty.NumberFloatVal(v.GetNumberValue())
+							case *structpb.Value_BoolValue:
+								nodeResultVM[k] = cty.BoolVal(v.GetBoolValue())
+							}
+						}
+
+						vm[nodeFnResult.Id] = cty.ObjectVal(nodeResultVM)
+
+						layerHtx.Variables["node"] = cty.ObjectVal(vm)
+
+						layer.Nodes = append(layer.Nodes, nodeFnResult)
+					default:
+						return nil, fmt.Errorf("unknown attribute type: %s", val.Type().FriendlyName())
 					}
 				}
 
@@ -268,8 +478,8 @@ func ParseHCL(r io.Reader) (*Model, error) {
 					})
 				}
 
-				vm[block.Labels[0]] = cty.ObjectVal(map[string]cty.Value{
-					"id":   cty.StringVal(block.Labels[0]),
+				vm[topLevelBlock.Labels[0]] = cty.ObjectVal(map[string]cty.Value{
+					"id":   cty.StringVal(topLevelBlock.Labels[0]),
 					"node": cty.ObjectVal(nodes),
 				})
 
@@ -277,7 +487,7 @@ func ParseHCL(r io.Reader) (*Model, error) {
 
 				m.Layers = append(m.Layers, layer)
 			default:
-				return nil, fmt.Errorf("unknown block type: %s", block.Type)
+				return nil, fmt.Errorf("unknown block type: %s", topLevelBlock.Type)
 			}
 		}
 	}
