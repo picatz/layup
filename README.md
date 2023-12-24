@@ -427,7 +427,7 @@ graph LR
       github_buf_organization_url[httpd://github.com/bufbuild]
     end
 
-    github_my_account-->|owner|this_repository
+    github_my_account-->|owner|github_this_repository
   end
 
   subgraph go
@@ -443,8 +443,8 @@ graph LR
       go_runtime_url[https://golang.org/pkg/runtime]
     end
 
-    go_owner-->|stewardship|language
-    go_language-->|implementation|runtime
+    go_owner-->|stewardship|go_language
+    go_language-->|implementation|go_runtime
   end
 
   subgraph buf
@@ -466,7 +466,7 @@ graph LR
     subgraph layup_cli
     end
 
-    layup_hcl-->|conversion|schema
+    layup_hcl-->|conversion|layup_schema
     layup_schema-->|schmea_source_code_genration|buf_cli
     layup_schema-->|schema_source_code|github_this_repository
     layup_cli-->|uses|go_runtime

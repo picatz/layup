@@ -59,6 +59,8 @@ func WriteMermiad(w io.Writer, m *Model) error {
 
 				// Replace the "/nodes/" with _ to match the node ID.
 				linkToID = strings.Replace(linkToID, "/nodes/", "_", 1)
+			} else {
+				linkToID = layer.Id + "_" + link.To
 			}
 
 			bw.WriteString("\t\t" + layer.Id + "_" + link.From + "-->" + "|" + link.Id + "|" + linkToID + "\n")
