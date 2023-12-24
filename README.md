@@ -414,61 +414,63 @@ layer "layup" {
 
 ```mermaid
 graph LR
-    subgraph github
-        subgraph my_account
-            my_account_url[httpd://github.com/picatz]
-        end
-        subgraph this_repository
-            this_repository_url[httpd://github.com/picatz/layup]
-        end
-        subgraph buf_organization
-            buf_organization_url[httpd://github.com/bufbuild]
-        end
-
-        my_account-->|owner|this_repository 
+  subgraph github
+    subgraph github_my_account
+      github_my_account_url[httpd://github.com/picatz]
     end
 
-    subgraph go
-        subgraph owner
-            owner_url[https://google.com]
-        end
-
-        subgraph language
-            language_url[https://golang.org]
-        end
-
-        subgraph runtime
-            runtime_url[https://golang.org/pkg/runtime]
-        end
-
-        owner-->|stewardship|language
-        language-->|implementation|runtime
+    subgraph github_this_repository
+      github_this_repository_url[httpd://github.com/picatz/layup]
     end
 
-    subgraph buf
-        subgraph buf_cli
-            cli_url[https://buf.build/docs/installation]
-        end
-
-        buf_cli-->|maintenance|buf_organization
-        buf_cli-->|uses|runtime
+    subgraph github_buf_organization
+      github_buf_organization_url[httpd://github.com/bufbuild]
     end
 
-    subgraph layup
-        subgraph schema
-        end
+    github_my_account-->|owner|this_repository
+  end
 
-        subgraph hcl
-        end
-
-        subgraph cli
-        end
-
-        hcl -->|conversion|schema
-        schema -->|schmea_source_code_genration|buf_cli
-        schema -->|schema_source_code|this_repository
-        cli-->|uses|runtime
+  subgraph go
+    subgraph go_owner
+      go_owner_url[https://google.com]
     end
+
+    subgraph go_language
+      go_language_url[https://golang.org]
+    end
+
+    subgraph go_runtime
+      go_runtime_url[https://golang.org/pkg/runtime]
+    end
+
+    go_owner-->|stewardship|language
+    go_language-->|implementation|runtime
+  end
+
+  subgraph buf
+    subgraph buf_cli
+      buf_cli_url[https://buf.build/docs/installation]
+    end
+
+    buf_cli-->|maintenance|github_buf_organization
+    buf_cli-->|uses|go_runtime
+  end
+
+  subgraph layup
+    subgraph layup_schema
+    end
+
+    subgraph layup_hcl
+    end
+
+    subgraph layup_cli
+    end
+
+    layup_hcl-->|conversion|schema
+    layup_schema-->|schmea_source_code_genration|buf_cli
+    layup_schema-->|schema_source_code|github_this_repository
+    layup_cli-->|uses|go_runtime
+  end
 ```
 
 <!-- Links -->
