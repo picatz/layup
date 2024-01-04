@@ -11,13 +11,6 @@
 relationships. It is designed to be a simple, flexible, and extensible way to model anything. 
 Because everything is a graph.
 
-The name draws inspiration from various sources. It relates to the act of "laying up" 
-bricks in a specific order, and the [lay-up] manufacturing process for composite materials, 
-such as in aerospace[^1], where a final product is achieved by overlapping distinct layers. 
-This technique allows for the creation of complex shapes with unique mechanical properties. 
-Lastly, it playfully references the basketball "layup", a simple yet effective shot. Combining 
-these concepts, the name aims to be memorable, easy to type, and applicable to graph data modeling.
-
 <!--
 ## Installation
 
