@@ -19,13 +19,18 @@ func WriteDOT(w io.Writer, m *Model) error {
 	bw := bufio.NewWriter(tw)
 	defer bw.Flush()
 
-	bw.WriteString("digraph G {\n")
+	bw.WriteString(fmt.Sprintf("digraph %q {\n", m.GetUri()))
+	bw.WriteString(fmt.Sprintf("\tlabel=%q\n", m.GetUri()))
+	bw.WriteString("\tcompound=true\n")
+	bw.WriteString("\tnode [shape=box]\n")
 
 	for _, layer := range m.Layers {
 		bw.WriteString("\tsubgraph cluster_" + layer.Id + " {\n")
+		bw.WriteString(fmt.Sprintf("\t\tlabel=%q\n", layer.Id))
 
 		for _, n := range layer.Nodes {
 			bw.WriteString("\t\t" + layer.Id + "_" + n.Id + " [\n")
+			bw.WriteString("\t\t\tlabel=" + fmt.Sprintf("%q", n.Id) + "\n")
 			for k, v := range n.Attributes {
 				var attrStr string
 
