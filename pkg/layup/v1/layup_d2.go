@@ -50,7 +50,7 @@ func WriteD2(w io.Writer, m *Model) error {
 
 			// If the link has an ID, use that as the label, otherwise
 			// if it's using a URI, we need to clean it up a bit to match
-			// mermiad's syntax. We control the ID of each node in the subgraph,
+			// D2's syntax. We control the ID of each node in the subgraph,
 			// so this is fairly safe.
 			if strings.Contains(linkToID, "://") {
 				linkToID = strings.TrimPrefix(linkToID, m.GetUri())
