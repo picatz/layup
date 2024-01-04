@@ -13,15 +13,15 @@ var thisProject = `uri = "layup://example"
 
 layer "github" {
     node "my_account" {
-        url = "httpd://github.com/picatz"
+        url = "https://github.com/picatz"
     }
 
     node "this_repository" {
-        url = "httpd://github.com/picatz/layup"
+        url = "https://github.com/picatz/layup"
     }
 
     node "buf_organization" {
-        url = "httpd://github.com/bufbuild"
+        url = "https://github.com/bufbuild"
     }
 
     link "owner" {
