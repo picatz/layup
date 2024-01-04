@@ -68,7 +68,7 @@ func WriteDOT(w io.Writer, m *Model) error {
 				linkToID = fmt.Sprintf("%s_%s", layer.Id, link.To)
 			}
 
-			bw.WriteString("\t\t" + fmt.Sprintf("%s_%s -> %s [label=\"%s\"]", layer.Id, link.From, linkToID, link.Id) + "\n")
+			bw.WriteString("\t\t" + fmt.Sprintf("%s_%s -> %s [label=%q]", layer.Id, link.From, linkToID, link.Id) + "\n")
 		}
 
 		bw.WriteString("\t}\n")
