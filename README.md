@@ -186,15 +186,15 @@ uri = "layup://example"
 
 layer "github" {
     node "my_account" {
-        url = "httpd://github.com/picatz"
+        url = "https://github.com/picatz"
     }
 
     node "this_repository" {
-        url = "httpd://github.com/picatz/layup"
+        url = "https://github.com/picatz/layup"
     }
 
     node "buf_organization" {
-        url = "httpd://github.com/bufbuild"
+        url = "https://github.com/bufbuild"
     }
 
     link "owner" {
@@ -288,19 +288,19 @@ layer "layup" {
         {
           "id": "my_account",
           "attributes": {
-            "url": "httpd://github.com/picatz"
+            "url": "https://github.com/picatz"
           }
         },
         {
           "id": "this_repository",
           "attributes": {
-            "url": "httpd://github.com/picatz/layup"
+            "url": "https://github.com/picatz/layup"
           }
         },
         {
           "id": "buf_organization",
           "attributes": {
-            "url": "httpd://github.com/bufbuild"
+            "url": "https://github.com/bufbuild"
           }
         }
       ],
@@ -416,15 +416,15 @@ layer "layup" {
 graph LR
   subgraph github
     subgraph github_my_account
-      github_my_account_url[httpd://github.com/picatz]
+      github_my_account_url[https://github.com/picatz]
     end
 
     subgraph github_this_repository
-      github_this_repository_url[httpd://github.com/picatz/layup]
+      github_this_repository_url[https://github.com/picatz/layup]
     end
 
     subgraph github_buf_organization
-      github_buf_organization_url[httpd://github.com/bufbuild]
+      github_buf_organization_url[https://github.com/bufbuild]
     end
 
     github_my_account-->|owner|github_this_repository
